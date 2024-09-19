@@ -325,8 +325,9 @@ func TestObserve(t *testing.T) {
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			e := external{
-				db:   tc.fields.db,
-				kube: tc.fields.kube,
+				userDB:  tc.fields.db,
+				loginDB: tc.fields.db,
+				kube:    tc.fields.kube,
 			}
 			got, err := e.Observe(tc.args.ctx, tc.args.mg)
 			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
@@ -474,8 +475,9 @@ func TestCreate(t *testing.T) {
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			e := external{
-				db:   tc.fields.db,
-				kube: tc.fields.kube,
+				userDB:  tc.fields.db,
+				loginDB: tc.fields.db,
+				kube:    tc.fields.kube,
 			}
 			got, err := e.Create(tc.args.ctx, tc.args.mg)
 			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
@@ -692,8 +694,9 @@ func TestUpdate(t *testing.T) {
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			e := external{
-				db:   tc.fields.db,
-				kube: tc.args.kube,
+				userDB:  tc.fields.db,
+				loginDB: tc.fields.db,
+				kube:    tc.args.kube,
 			}
 			got, err := e.Update(tc.args.ctx, tc.args.mg)
 			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
@@ -710,7 +713,8 @@ func TestDelete(t *testing.T) {
 	errBoom := errors.New("boom")
 
 	type fields struct {
-		db xsql.DB
+		userDB  xsql.DB
+		loginDB xsql.DB
 	}
 
 	type args struct {
@@ -734,7 +738,7 @@ func TestDelete(t *testing.T) {
 		"ErrDropDB": {
 			reason: "Errors dropping a user should be returned",
 			fields: fields{
-				db: &mockDB{
+				userDB: &mockDB{
 					MockQuery: func(ctx context.Context, q xsql.Query) (*sql.Rows, error) {
 						return mockRowsToSQLRows(sqlmock.NewRows([]string{})), nil
 					},
@@ -742,6 +746,7 @@ func TestDelete(t *testing.T) {
 						return errBoom
 					},
 				},
+				loginDB: &mockDB{},
 			},
 			args: args{
 				mg: &v1alpha1.User{},
@@ -751,10 +756,16 @@ func TestDelete(t *testing.T) {
 		"Success": {
 			reason: "No error should be returned",
 			fields: fields{
-				db: &mockDB{
+				userDB: &mockDB{
 					MockQuery: func(ctx context.Context, q xsql.Query) (*sql.Rows, error) {
 						return mockRowsToSQLRows(sqlmock.NewRows([]string{})), nil
 					},
+					MockExec: func(ctx context.Context, q xsql.Query) error {
+						return nil
+					},
+				},
+				loginDB: &mockDB{
+
 					MockExec: func(ctx context.Context, q xsql.Query) error {
 						return nil
 					},
@@ -768,7 +779,7 @@ func TestDelete(t *testing.T) {
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			e := external{db: tc.fields.db}
+			e := external{userDB: tc.fields.userDB, loginDB: tc.fields.loginDB}
 			err := e.Delete(tc.args.ctx, tc.args.mg)
 			if diff := cmp.Diff(tc.want, err, test.EquateErrors()); diff != "" {
 				t.Errorf("\n%s\ne.Delete(...): -want error, +got error:\n%s\n", tc.reason, diff)
