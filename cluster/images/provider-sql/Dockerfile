@@ -4,6 +4,7 @@ ARG TARGETOS
 ARG TARGETARCH
 
 ADD bin/$TARGETOS\_$TARGETARCH/provider /usr/local/bin/crossplane-sql-provider
+ADD package.yaml /package.yaml
 
 USER 65532
 ENTRYPOINT ["crossplane-sql-provider"]

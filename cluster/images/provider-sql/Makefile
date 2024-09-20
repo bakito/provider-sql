@@ -24,6 +24,7 @@ img.publish:
 img.build.shared:
 	@cp Dockerfile $(IMAGE_TEMP_DIR) || $(FAIL)
 	@cp -r $(OUTPUT_DIR)/bin/ $(IMAGE_TEMP_DIR)/bin || $(FAIL)
+	@cp -r $(OUTPUT_DIR)/package.yaml $(IMAGE_TEMP_DIR)/package.yaml || $(FAIL)
 	@docker buildx build $(BUILD_ARGS) \
 		--platform $(IMAGE_PLATFORMS) \
 		-t $(IMAGE) \
