@@ -254,7 +254,6 @@ spec:
                     type: object
                 required:
                 - permissions
-                - schema
                 type: object
               managementPolicies:
                 default:

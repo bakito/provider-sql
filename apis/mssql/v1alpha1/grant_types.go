@@ -56,7 +56,8 @@ type GrantParameters struct {
 	Permissions GrantPermissions `json:"permissions"`
 
 	// Schema for the permissions to be granted for.
-	Schema *string `json:"schema"`
+	// +optional
+	Schema *string `json:"schema,omitempty"`
 
 	// User this grant is for.
 	// +optional

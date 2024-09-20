@@ -213,19 +213,19 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 //	calculate the Cartesian product, and then filter. It would be more
 //	efficient to first filter principals by name, and then join.
 const queryPermissionDefault = `SELECT pe.permission_name
-	FROM sys.database_principals AS pr  
-	JOIN sys.database_permissions AS pe  
-	    ON pe.grantee_principal_id = pr.principal_id  
+	FROM sys.database_principals AS pr
+	JOIN sys.database_permissions AS pe
+	    ON pe.grantee_principal_id = pr.principal_id
 	WHERE
 	      pe.class = 0 /* DATABASE (default) */
 	  AND pr.name = %s`
 
 const queryPermissionSchema = `SELECT pe.permission_name
-	FROM sys.database_principals AS pr  
-	JOIN sys.database_permissions AS pe  
-	    ON pe.grantee_principal_id = pr.principal_id  
+	FROM sys.database_principals AS pr
+	JOIN sys.database_permissions AS pe
+	    ON pe.grantee_principal_id = pr.principal_id
 	JOIN sys.schemas AS s
-	    ON sh.schema_id = pe.major_id  
+	    ON s.schema_id = pe.major_id
 	WHERE
 	      pe.class = 3 /* SCHEMA */
 	  AND s.name = %s
