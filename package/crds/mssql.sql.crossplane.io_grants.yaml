@@ -170,6 +170,9 @@ spec:
                       type: string
                     minItems: 1
                     type: array
+                  schema:
+                    description: Schema for the permissions to be granted for.
+                    type: string
                   user:
                     description: User this grant is for.
                     type: string
@@ -251,6 +254,7 @@ spec:
                     type: object
                 required:
                 - permissions
+                - schema
                 type: object
               managementPolicies:
                 default:
