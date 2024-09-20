@@ -263,7 +263,7 @@ func (c *external) getPermissions(ctx context.Context, cr *v1alpha1.Grant) ([]st
 
 func onSchemaQuery(cr *v1alpha1.Grant) (schema string) {
 	if cr.Spec.ForProvider.Schema != nil {
-		schema = fmt.Sprintf("ON SCHEMA::%s", mssql.QuoteValue(*cr.Spec.ForProvider.Schema))
+		schema = fmt.Sprintf("ON SCHEMA::%s", *cr.Spec.ForProvider.Schema)
 	}
 	return
 }
