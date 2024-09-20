@@ -55,6 +55,9 @@ type GrantParameters struct {
 	// for available privileges.
 	Permissions GrantPermissions `json:"permissions"`
 
+	// Schema for the permissions to be granted for.
+	Schema *string `json:"schema"`
+
 	// User this grant is for.
 	// +optional
 	// +crossplane:generate:reference:type=User
