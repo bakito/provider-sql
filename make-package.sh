@@ -1,7 +1,10 @@
 #!/bin/bash
 
+set -e
+
 make generate
 
+mkdir -p _output
 cat package/crossplane.yaml > _output/package.yaml
 
 for crd in $(ls package/crds); do
