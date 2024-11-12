@@ -22,6 +22,12 @@ import (
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 )
 
+// UserTypes
+const (
+	UserTypeLocal = "Local"
+	UserTypeAD    = "AD"
+)
+
 // A UserSpec defines the desired state of a Database.
 type UserSpec struct {
 	xpv1.ResourceSpec `json:",inline"`
@@ -56,6 +62,7 @@ type UserParameters struct {
 	LoginDatabaseRef *xpv1.Reference `json:"loginDatabaseRef,omitempty"`
 	// DatabaseSelector allows you to use selector constraints to select a Database to be used to create the user LOGIN in (normally master).
 	LoginDatabaseSelector *xpv1.Selector `json:"loginDatabaseSelector,omitempty"`
+	Type                  *string        `json:"type,omitempty"`
 }
 
 // A UserObservation represents the observed state of a MSSQL user.
