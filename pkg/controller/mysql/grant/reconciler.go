@@ -40,6 +40,7 @@ import (
 	"github.com/crossplane-contrib/provider-sql/apis/mysql/v1alpha1"
 	"github.com/crossplane-contrib/provider-sql/pkg/clients/mysql"
 	"github.com/crossplane-contrib/provider-sql/pkg/clients/xsql"
+	"github.com/crossplane-contrib/provider-sql/pkg/controller/mysql/tls"
 )
 
 const (
@@ -47,6 +48,7 @@ const (
 	errGetPC        = "cannot get ProviderConfig"
 	errNoSecretRef  = "ProviderConfig does not reference a credentials Secret"
 	errGetSecret    = "cannot get credentials Secret"
+	errTLSConfig    = "cannot load TLS config"
 
 	errNotGrant     = "managed resource is not a Grant custom resource"
 	errCreateGrant  = "cannot create grant"
@@ -102,8 +104,9 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 
 	// ProviderConfigReference could theoretically be nil, but in practice the
 	// DefaultProviderConfig initializer will set it before we get here.
+	providerConfigName := cr.GetProviderConfigReference().Name
 	pc := &v1alpha1.ProviderConfig{}
-	if err := c.kube.Get(ctx, types.NamespacedName{Name: cr.GetProviderConfigReference().Name}, pc); err != nil {
+	if err := c.kube.Get(ctx, types.NamespacedName{Name: providerConfigName}, pc); err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
 
@@ -120,8 +123,13 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, errGetSecret)
 	}
 
+	tlsName, err := tls.LoadConfig(ctx, c.kube, providerConfigName, pc.Spec.TLS, pc.Spec.TLSConfig)
+	if err != nil {
+		return nil, errors.Wrap(err, errTLSConfig)
+	}
+
 	return &external{
-		db:   c.newDB(s.Data, pc.Spec.TLS, cr.Spec.ForProvider.BinLog),
+		db:   c.newDB(s.Data, tlsName, cr.Spec.ForProvider.BinLog),
 		kube: c.kube,
 	}, nil
 }
@@ -261,7 +269,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	privileges, grantOption := getPrivilegesString(cr.Spec.ForProvider.Privileges.ToStringSlice())
 	query := createGrantQuery(privileges, dbname, username, table, grantOption)
 
-	if err := mysql.ExecWithFlush(ctx, c.db, mysql.ExecQuery{Query: query, ErrorValue: errCreateGrant}, mysql.ExecOptions{}); err != nil {
+	if err := mysql.ExecWrapper(ctx, c.db, mysql.ExecQuery{Query: query, ErrorValue: errCreateGrant}); err != nil {
 		return managed.ExternalCreation{}, err
 	}
 	return managed.ExternalCreation{}, nil
@@ -285,10 +293,10 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		sort.Strings(toRevoke)
 		privileges, grantOption := getPrivilegesString(toRevoke)
 		query := createRevokeQuery(privileges, dbname, username, table, grantOption)
-		if err := mysql.ExecWithFlush(ctx, c.db,
+		if err := mysql.ExecWrapper(ctx, c.db,
 			mysql.ExecQuery{
 				Query: query, ErrorValue: errRevokeGrant,
-			}, mysql.ExecOptions{}); err != nil {
+			}); err != nil {
 			return managed.ExternalUpdate{}, err
 		}
 	}
@@ -297,10 +305,10 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		sort.Strings(toGrant)
 		privileges, grantOption := getPrivilegesString(toGrant)
 		query := createGrantQuery(privileges, dbname, username, table, grantOption)
-		if err := mysql.ExecWithFlush(ctx, c.db,
+		if err := mysql.ExecWrapper(ctx, c.db,
 			mysql.ExecQuery{
 				Query: query, ErrorValue: errCreateGrant,
-			}, mysql.ExecOptions{}); err != nil {
+			}); err != nil {
 			return managed.ExternalUpdate{}, err
 		}
 	}
@@ -369,7 +377,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	privileges, grantOption := getPrivilegesString(cr.Spec.ForProvider.Privileges.ToStringSlice())
 	query := createRevokeQuery(privileges, dbname, username, table, grantOption)
 
-	if err := mysql.ExecWithFlush(ctx, c.db, mysql.ExecQuery{Query: query, ErrorValue: errRevokeGrant}, mysql.ExecOptions{}); err != nil {
+	if err := mysql.ExecWrapper(ctx, c.db, mysql.ExecQuery{Query: query, ErrorValue: errRevokeGrant}); err != nil {
 		var myErr *mysqldriver.MySQLError
 		if errors.As(err, &myErr) && myErr.Number == errCodeNoSuchGrant {
 			// MySQL automatically deletes related grants if the user has been deleted
